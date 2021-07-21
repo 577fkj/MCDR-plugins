@@ -1,73 +1,81 @@
 # -*- coding: utf-8 -*-
-
 import re
-import time
 import os
+from time import sleep
 
-def on_player_joined(server, player):
-  if os.path.exists('./plugins/gm/' + player):
-    server.execute("gamemode spectator " + player)
+PLUGIN_METADATA = {
+	'id': 'Gamemode',
+	'version': '1.0.0',
+	'name': 'Gamemode',
+	'author': [
+		'57767598'
+   ],
+	'link': 'https://github.com/577fkj/MCDR-plugins/'
+}
 
-def on_load(server, old):
-    server.add_help_message('!!gm', '切换玩家模式')
-    server.add_help_message('!!gm [ID]', '管理员强制切换切换玩家模式(限制权限admin)')
-    if not os.path.exists('./plugins/gm/'):
-      os.makedirs('./plugins/gm/')
+gm_user = 0
+
+def process_coordinate(text):
+	data = text[1:-1].replace('d', '').split(', ')
+	data = [(x + 'E0').split('E') for x in data]
+	return tuple([float(e[0]) * 10 ** int(e[1]) for e in data])
+
+
+def process_dimension(text):
+	return text.replace(re.match(r'[\w ]+: ', text).group(), '', 1)
+
+
+def display(server, name, position, dimension):
+	server.tell(name, '§6将在3秒后切换游戏模式')
+	sleep(3)
+	if position != ():
+		x, y, z = position
+	else:
+		x, y, z = (0, 0, 0)
+	dimension = dimension.replace('"', '').replace('\n', '')
+	if os.path.exists('./plugins/gm/' + name + '.gmpos'):
+		with open('./plugins/gm/' + name + '.gmpos', 'r') as f:
+			pos_data = f.read()
+		pos_data = pos_data.split('$')
+		print('execute at {0} as {0} in {1} run tp {2} {3} {4}'.format(name, pos_data[0], pos_data[1], pos_data[2], pos_data[3]))
+		server.execute('execute at {0} as {0} in {1} run tp {2} {3} {4}'.format(name, pos_data[0], pos_data[1], pos_data[2], pos_data[3]))
+		server.execute('gamemode survival {}'.format(name))
+		os.remove('./plugins/gm/' + name + '.gmpos')
+		server.tell(name, '§6已切换到生存模式!')
+	else:
+		with open('./plugins/gm/' + name + '.gmpos', 'w') as f:
+			f.write('%s$%s$%s$%s' % (dimension, x, y, z))
+		server.execute('gamemode spectator {}'.format(name))
+		server.tell(name, '§6已切换到旁观者模式!')
+
 
 def on_info(server, info):
-  PlayerInfoAPI = server.get_plugin_instance('PlayerInfoAPI')
-  dimension_convert = {"0":"overworld","-1":"the_nether","1":"the_end","minecraft:overworld":"overworld","minecraft:the_nether":"the_nether","minecraft:the_end":"the_end"}
-  per = server.get_permission_level(info)
-  if info.content.startswith('!!gm') and info.is_player == 1:
-    if per >= 1:
-      gm = info.content.split(" ")
-      if len(gm) == 2 and per == 3:
-          server.tell(info.player, '即将更改玩家 §6{0} §r的 §a游戏模式!'.format(gm[1]))
-          if os.path.exists('./plugins/gm/' + gm[1]):
-            server.tell(gm[1], '§6正在更改模式，请不要走动!')
-            time.sleep(1)
-            f = open('plugins/gm/' + gm[1], 'r')
-            zub = f.read()
-            zub = zub.replace('\n', '').replace('\r', '')
-            f.close()
-            os.remove('plugins/gm/' + gm[1])
-            xyz = zub.split("|")
-            server.execute("execute at " + gm[1] + " in minecraft:" + xyz[3] + " run tp " + gm[1] + " " + xyz[0] + " " + xyz[1] + " " + xyz[2])
-            server.execute("gamemode survival " + gm[1])
-          else:
-            server.tell(gm[1], '§6正在更改模式，请不要走动!')
-            time.sleep(1)
-            os.system('cd plugins/gm && echo " " > ' + gm[1])
-            pos = PlayerInfoAPI.getPlayerInfo(server, info.player, path='Pos')
-            dim = PlayerInfoAPI.getPlayerInfo(server, info.player, path='Dimension')
-            f = open('./plugins/gm/' + gm[1], 'w')
-            f.write(str(pos[0])+'|'+str(pos[1])+'|'+str(pos[2])+'|'+dimension_convert[str(dim)])
-            f.close()
-            server.execute("gamemode spectator " + gm[1])
-            server.tell(gm[1], '§6已切换到观察者模式,要切换回来请!!gm')
-      elif len(info.content) != 4:
-        server.tell(info.player, '§6装你妈的B')
-      elif os.path.exists('./plugins/gm/' + info.player):
-        server.tell(info.player, '§6正在更改模式，请不要走动!')
-        time.sleep(1)
-        f = open('plugins/gm/' + info.player, 'r')
-        zub = f.read()
-        zub = zub.replace('\n', '').replace('\r', '')
-        f.close()
-        os.remove('plugins/gm/' + info.player)
-        xyz = zub.split("|")
-        server.execute("execute at " + info.player + " in minecraft:" + xyz[3] + " run tp " + info.player + " " + xyz[0] + " " + xyz[1] + " " + xyz[2])
-        server.execute("gamemode survival " + info.player)
-      else:
-        server.tell(info.player, '§6正在更改模式，请不要走动!')
-        time.sleep(1)
-        os.system('cd plugins/gm && echo " " > ' + info.player)
-        pos = PlayerInfoAPI.getPlayerInfo(server, info.player, path='Pos')
-        dim = PlayerInfoAPI.getPlayerInfo(server, info.player, path='Dimension')
-        f = open('./plugins/gm/' + info.player, 'w')
-        f.write(str(pos[0])+'|'+str(pos[1])+'|'+str(pos[2])+'|'+dimension_convert[str(dim)])
-        f.close()
-        server.execute("gamemode spectator " + info.player)
-        server.tell(info.player, '§6已切换到观察者模式,要切换回来请!!gm')
-    else:
-      server.tell(info.player, '你没有权限')
+	global gm_user
+	position = ()
+	dimension = ''
+	if info.is_player and info.content == '!!gm':
+		if hasattr(server, 'MCDR') and server.is_rcon_running():
+			name = info.player
+			if not os.path.exists('./plugins/gm/' + name + '.gmpos'):
+				position = process_coordinate(re.search(r'\[.*\]', server.rcon_query('data get entity {} Pos'.format(name))).group())
+				dimension = process_dimension(server.rcon_query('data get entity {} Dimension'.format(name)))
+			display(server, name, position, dimension)
+		else:
+			gm_user += 1
+			if not os.path.exists('./plugins/gm/' + info.player + '.gmpos'):
+				server.execute('data get entity ' + info.player)
+			else:
+				display(server, info.player, position, dimension)
+	if not info.is_player and gm_user > 0 and re.match(r'\w+ has the following entity data: ', info.content) is not None:
+		name = info.content.split(' ')[0]
+		dimension = re.search(r'(?<= Dimension: )(.*?),', info.content).group().replace('"', '').replace(',', '')
+		position_str = re.search(r'(?<=Pos: )\[.*?\]', info.content).group()
+		position = process_coordinate(position_str)
+		display(server, name, position, dimension)
+		gm_user -= 1
+
+
+def on_load(server, old):
+	server.register_help_message('!!gm', '切换旁观者/生存')
+	if not os.path.exists('./plugins/gm/'):
+		os.mkdir('./plugins/gm/')
