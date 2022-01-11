@@ -4,7 +4,7 @@
 
 gamemode 切换玩家到旁观者 取消回到原来的位置在插件目录下创建一个文件夹gm (需要PlayerInfoApi)
 
-新的[点我](https://github.com/577fkj/MCDR-plugins)
+新的[点我](https://github.com/577fkj/MCDR-Gamemode)
 
 deipos 私发玩家死亡坐标 (需要PlayerInfoApi)
 
